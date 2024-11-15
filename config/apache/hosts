@@ -1,0 +1,9 @@
+127.0.0.1   localhost
+127.0.0.1   symfony
+127.0.0.1   wordpress
+
+
+127.0.0.1 symfony.moja_domena.local
+127.0.0.1 wordpress.moja_domena.local
+127.0.0.1 symfonyeasyadmin.moja_domena.local
+127.0.0.1 apiplatform3p1.moja_domena.local
