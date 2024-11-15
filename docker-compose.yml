@@ -1,0 +1,85 @@
+services:
+  web:
+    build:
+      # context: .
+      dockerfile: ./config/Dockerfile
+    container_name: apache_php_server
+    volumes:
+      - ./projects/symfonyeasyadmin:/var/www/moja_domena/symfonyeasyadmin
+      - ./projects:/var/www/moja_domena
+      # - ./config/apache/symfony.conf:/etc/apache2/sites-available/symfony.conf
+      # - ./config/apache/wordpress.conf:/etc/apache2/sites-available/wordpress.conf
+      - ./config/apache/dynamic_hosts.conf:/etc/apache2/sites-available/dynamic_hosts.conf
+      - ./config/apache/hosts:/etc/hosts
+    ports:
+      - '80:80'
+    environment:
+      APACHE_RUN_USER: apache
+      APACHE_RUN_GROUP: apache
+      APACHE_LOG_DIR: /var/log/apache2
+    restart: always
+    # networks:
+      # - main
+    depends_on:
+      - node
+    networks:
+      - web-admin  
+  
+  database:
+      # container_name: mysql      build:
+      image: mysql:8.4.0
+      restart: always
+      environment:
+        MYSQL_DATABASE: db
+        MYSQL_ROOT_PASSWORD: db_pass
+        MYSQL_PASSWORD: db_pass
+        MYSQL_USER: db_user
+      volumes:
+      - my-db:/var/lib/mysql
+      # - ./config/database/entrypoint.sh:/docker-entrypoint-initdb.d/entrypoint.sh
+      # command: --default-authentication-plugin=mysql_native_password
+      networks:
+        - web-admin
+
+  node:
+    build:
+      dockerfile: ./config/node/Dockerfile
+    container_name: node_yarn
+    volumes:
+      - ./projects/symfonyeasyadmin:/usr/src/app # Współdzielony projekt
+      - ./projects/api-platfrom3p2:/usr/src/app-api-2
+    # networks:
+    # command: ["npm", "run", "watch"] # Można dostosować zależnie od potrzeb (yarn install, build itp.)
+    dns:
+      - 8.8.8.8  # Google DNS
+      - 8.8.4.4  # Alternatywny Google DNS
+    ports:
+      - '3001:3001'
+    # depends_on: 
+          # - web
+
+  react_admin:
+    build:
+      dockerfile: ./config/react-admin/Dockerfile
+    container_name: react-admin-frontend
+    ports:
+      - '3000:3000'
+    environment:
+      - VITE_API_URL=http://apiplatform3p1.moja_domena.local/api
+    command: ["npm", "start"]
+    volumes:
+      - ./projects/react-admin:/usr/src/app
+    expose:
+      - 3000
+    networks:
+      - web-admin
+
+
+
+
+volumes:
+  my-db:
+
+networks:
+  web-admin:
+    driver: bridge
