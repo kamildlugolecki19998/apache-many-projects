@@ -2,25 +2,39 @@
 
 namespace App\Entity;
 
+use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\Link;
+use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Delete;
+use App\Repository\UserRepository;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Get;
-use ApiPlatform\Metadata\Link;
-use ApiPlatform\Serializer\Filter\PropertyFilter;
-use App\Repository\UserRepository;
-use Doctrine\Common\Collections\ArrayCollection;
+use ApiPlatform\Metadata\GetCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
-use Symfony\Component\Security\Core\User\UserInterface;
-use Symfony\Component\Serializer\Annotation\Groups;
-use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Doctrine\Common\Collections\ArrayCollection;
+use ApiPlatform\Serializer\Filter\PropertyFilter;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
 #[ApiResource(
+    operations: [
+        new Get(),
+        new GetCollection(),
+        new Post(security: 'is_granted("PUBLIC_ACCESS")'),
+        new Put(security: 'is_granted("ROLE_USER_EDIT")'),
+        new Patch(security: 'is_granted("ROLE_USER_EDIT")'),
+        new Delete(),
+    ],
     normalizationContext: ['groups' => ['user:read']],
     denormalizationContext: ['groups' => ['user:write']],
+    security: 'is_granted("ROLE_USER")'
 )]
 #[ApiResource(
     uriTemplate: '/treasures/{treasure_id}/owner.{_format}',
@@ -32,6 +46,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
     ],
     normalizationContext: ['groups' => ['user:read']],
+    security: 'is_granted("ROLE_USER")'
 )]
 #[ApiFilter(PropertyFilter::class)]
 #[UniqueEntity(fields: ['email'], message: 'There is already an account with this email')]
@@ -69,9 +84,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Assert\Valid]
     private Collection $dragonTreasures;
 
+    #[ORM\OneToMany(mappedBy: 'ownedBy', targetEntity: ApiToken::class)]
+    private Collection $apiTokens;
+
     public function __construct()
     {
         $this->dragonTreasures = new ArrayCollection();
+        $this->apiTokens = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -91,6 +110,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    private ?array $accessTokenScopes = null;
+
     /**
      * A visual identifier that represents this user.
      *
@@ -108,6 +129,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $roles = $this->roles;
         // guarantee every user at least has ROLE_USER
+
+        if (null === $this->accessTokenScopes) {
+            $roles = $this->roles;
+            $roles[] = 'ROLE_FULL_USER';
+        }else{
+          $roles = $this->accessTokenScopes;
+        }
+
         $roles[] = 'ROLE_USER';
 
         return array_unique($roles);
@@ -184,5 +213,49 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
 
         return $this;
+    }
+
+    /**
+     * @return Collection<int, ApiToken>
+     */
+    public function getApiTokens(): Collection
+    {
+        return $this->apiTokens;
+    }
+
+    public function addApiToken(ApiToken $apiToken): self
+    {
+        if (!$this->apiTokens->contains($apiToken)) {
+            $this->apiTokens->add($apiToken);
+            $apiToken->setOwnedBy($this);
+        }
+
+        return $this;
+    }
+
+    public function removeApiToken(ApiToken $apiToken): self
+    {
+        if ($this->apiTokens->removeElement($apiToken)) {
+            // set the owning side to null (unless already changed)
+            if ($apiToken->getOwnedBy() === $this) {
+                $apiToken->setOwnedBy(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getValidTokenStrings(): array
+    {
+        return $this->getApiTokens()
+            ->filter(fn (ApiToken $token) => $token->isValid())
+            ->map(fn (ApiToken $token) => $token->getToken())
+            ->toArray()
+        ;
+    }
+
+    public function markAsTokenAuthenticated(array $scopes): void
+    {
+        $this->accessTokenScopes = $scopes;
     }
 }

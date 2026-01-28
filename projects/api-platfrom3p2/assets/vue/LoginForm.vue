@@ -70,7 +70,7 @@ const handleSubmit = async () => {
     const response = await fetch('/login', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
             email: email.value,
@@ -83,14 +83,15 @@ const handleSubmit = async () => {
     if (!response.ok) {
         const data = await response.json();
         console.log(data);
-        // TODO: set error
+        error.value = data.error;
 
         return;
     }
 
     email.value = '';
     password.value = '';
-    //emit('user-authenticated', userIri);
+    const userIri = response.headers.get('Location');
+    emit('user-authenticated', userIri);
 }
 
 </script>

@@ -18,10 +18,8 @@ services:
       APACHE_RUN_GROUP: apache
       APACHE_LOG_DIR: /var/log/apache2
     restart: always
-    # networks:
-      # - main
     depends_on:
-      - node
+      - react_admin
     networks:
       - web-admin  
   
@@ -41,20 +39,21 @@ services:
       networks:
         - web-admin
 
-  node:
-    build:
-      dockerfile: ./config/node/Dockerfile
-    container_name: node_yarn
-    volumes:
-      - ./projects/symfonyeasyadmin:/usr/src/app # Współdzielony projekt
-      - ./projects/api-platfrom3p2:/usr/src/app-api-2
-    # networks:
-    # command: ["npm", "run", "watch"] # Można dostosować zależnie od potrzeb (yarn install, build itp.)
-    dns:
-      - 8.8.8.8  # Google DNS
-      - 8.8.4.4  # Alternatywny Google DNS
-    ports:
-      - '3001:3001'
+  # node:
+  #   build:
+  #     dockerfile: ./config/node/Dockerfile
+  #   container_name: node_yarn
+  #   volumes:
+  #     #- ./projects/symfonyeasyadmin:/usr/src/app # Współdzielony projekt
+  #     # - ./projects/api-platfrom3p2:/usr/src/app-api-2
+  #     - ./projects/api-platfrom3p2:/usr/src/app
+  #   # networks:
+  #   # command: ["npm", "run", "watch"] # Można dostosować zależnie od potrzeb (yarn install, build itp.)
+  #   dns:
+  #     - 8.8.8.8  # Google DNS
+  #     - 8.8.4.4  # Alternatywny Google DNS
+  #   ports:
+  #     - '3001:3001'
     # depends_on: 
           # - web
 
@@ -66,9 +65,11 @@ services:
       - '3000:3000'
     environment:
       - VITE_API_URL=http://apiplatform3p1.moja_domena.local/api
-    command: ["npm", "start"]
+    # command: ["npm", "run", "watch"]
+    command: ["sh", "-c", "npm install && npm run watch && tail -f /dev/null"]
     volumes:
-      - ./projects/react-admin:/usr/src/app
+      # - ./projects/react-admin:/usr/src/app
+      - ./projects/api-platfrom3p2:/usr/src/app
     expose:
       - 3000
     networks:
@@ -79,7 +80,7 @@ services:
 
 volumes:
   my-db:
-
+  shared_api_data:
 networks:
   web-admin:
     driver: bridge

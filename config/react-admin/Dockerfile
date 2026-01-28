@@ -11,11 +11,13 @@ RUN usermod -u 1000 node && groupmod -g 1000 node
 # COPY ./../projects/react-admin/package.json ./../projects/react-admin/package-lock.json ./
 
 RUN chown -R node:node /usr/src/app
-COPY ./../projects/react-admin /usr/src/app
+# COPY ./../projects/react-admin /usr/src/app
 
-# RUN npm install
+COPY ./../projects/api-platfrom3p2 /usr/src/app
 
-# RUN npm run build
+RUN npm install
+
+RUN npm run build
 #RUN npx create-react-app .
 #RUN rm -rf src/*
 #RUN npm install @api-platform/admin
@@ -26,4 +28,4 @@ RUN chown -R node:node /usr/src/app
 EXPOSE 3001
 
 # Komenda do uruchomienia serwisu (jeśli potrzebujesz)
-CMD ["npm", "start"]
+CMD ["npm", "run", "watch"]
